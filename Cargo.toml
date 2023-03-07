@@ -1,0 +1,15 @@
+[package]
+name = "helsinki_curations_migrator"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+aws-sdk-dynamodb = "0.24.0"
+aws-config = "0.54.1"
+clap = { version = "4.1.8", features = ["derive"] }
+uuid = { version = "1.3.0", features = ["v4"] }
+aws-types = "0.54.1"
