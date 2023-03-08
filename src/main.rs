@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .item("promoted", AttributeValue::L(curation.promoted.clone().iter().map(|promoted| AttributeValue::S(promoted.clone())).collect()))
             .item("hidden", AttributeValue::L(curation.hidden.clone().iter().map(|hidden| AttributeValue::S(hidden.clone())).collect()))
             .item("queries", AttributeValue::L(curation.queries.clone().iter().map(|query| AttributeValue::S(query.clone())).collect()));
-        let mut language = String::new();
+        let language;
         if let Some(doc) = document {
             put_request = put_request.item("name", AttributeValue::S(doc.title));
             if doc.language.is_some() {
