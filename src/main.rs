@@ -57,38 +57,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .send()
             .await?;
+            
         if scan_res.count() > 0 {
-            break;   
+            continue; 
         }
         
-        let empty_string = String::new();
-        let document_id = curation.promoted.first().unwrap_or_else(|| &empty_string);
-        let id_av = AttributeValue::S(uuid::Uuid::new_v4().to_string());
-        let promoted_av = AttributeValue::Ss(curation.promoted.clone());
-        let hidden_av = AttributeValue::Ss(curation.hidden.clone());
-        let queries_av = AttributeValue::Ss(curation.queries.clone());
-        let document_id_av = AttributeValue::S(document_id.clone());
-        let elastic_curation_id_av = AttributeValue::S(document_id.clone());
-        let curation_type_av = AttributeValue::S(String::from("standard"));
+        let document = if !curation.promoted.is_empty() {
+            Some(elastic_client.get_document(curation.promoted.first().unwrap()).await.unwrap())
+        } else {
+            None
+        };
         
         let mut put_request = PutRequest::builder()
-            .item("id", id_av)
-            .item("elasticCurationId", elastic_curation_id_av)
-            .item("curationType", curation_type_av);
-        if !curation.promoted.is_empty() {
-            put_request = put_request.item("promoted", promoted_av);
-        } 
-        if !curation.hidden.is_empty() {
-            put_request = put_request.item("hidden", hidden_av);
-        }
-        if !curation.queries.is_empty() {
-            put_request = put_request.item("queries", queries_av);
-        }
-        if !document_id.is_empty() {
-            put_request = put_request.item("documentId", document_id_av);
+            .item("id", AttributeValue::S(uuid::Uuid::new_v4().to_string()))
+            .item("elasticCurationId", AttributeValue::S(curation.id.clone()))
+            .item("curationType", AttributeValue::S(String::from("standard")))
+            .item("promoted", AttributeValue::L(curation.promoted.clone().iter().map(|promoted| AttributeValue::S(promoted.clone())).collect()))
+            .item("hidden", AttributeValue::L(curation.hidden.clone().iter().map(|hidden| AttributeValue::S(hidden.clone())).collect()))
+            .item("queries", AttributeValue::L(curation.queries.clone().iter().map(|query| AttributeValue::S(query.clone())).collect()));
+        let mut language = String::new();
+        if let Some(doc) = document {
+            println!("Document: {:#?}", doc);
+            put_request = put_request.item("name", AttributeValue::S(doc.title));
+            if doc.language.is_some() {
+                language = doc.language.unwrap()
+            } else {
+                language = String::from("fi")
+            };       
+        } else {
+            language = String::from("fi");
         }
         
+        put_request = put_request.item("language", AttributeValue::S(language));
         put_requests.push(put_request.build());
+    }
+    
+    if put_requests.is_empty() {
+        println!("No new curations to add!");
+        return Ok(());
     }
     
     println!("Splitting requests into chunks...");

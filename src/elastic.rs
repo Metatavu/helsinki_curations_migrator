@@ -27,17 +27,13 @@ pub struct ElasticCurations {
   pub queries: Vec<String>,
   pub promoted: Vec<String>,
   pub hidden: Vec<String>,
-  #[serde(default)]
-  pub suggestion: Option<ElasticCurationsSuggestion>
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ElasticCurationsSuggestion {
-  pub created_at: String,
-  pub operation: String,
-  pub promoted: Vec<String>,
-  pub status: String,
-  pub updated_at: String
+pub struct ElasticDocument {
+  pub id: String,
+  pub title: String,
+  pub language: Option<String>
 }
 
 #[derive(Clone, Debug)]
@@ -75,5 +71,28 @@ impl AppSearchClient {
       .json::<ElasticCurationsResponse>()
       .await
       .unwrap()
+  }
+  
+  pub async fn get_document(&self, document_id: &str) -> Option<ElasticDocument> {
+    let response = self.client
+      .get(format!("{}/documents?ids[]={document_id}", self.url))
+      .bearer_auth(&self.api_key)
+      .send()
+      .await
+      .unwrap()
+      .json::<Vec<ElasticDocument>>()
+      .await;
+    match response {
+      Result::Ok(docs) => if !docs.is_empty() {
+        Some(docs.first().unwrap().to_owned())
+      } else {
+        println!("Couldn't find Elastic Document with id {document_id}");
+        None
+      },
+      Result::Err(error) => {
+        println!("Error while getting Elastic Document with id {document_id}: {error}");
+        None
+      }
+    }
   }
 }
